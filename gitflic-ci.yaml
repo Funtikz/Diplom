@@ -1,46 +1,14 @@
-image: ubuntu:latest
+image: gradle:alpine
 
-variables:
-  TEST_1_SUCCESS: "true"
-  TEST_2_SUCCESS: "true"
-
-before_script:
-  - echo "Скрипт до основных инструкций (в каждой задаче)"
 
 stages:
   - test
-  - build
-  - deploy
 
-build:
-  stage: build
+Smoke test:
+  stage: test
   script:
-    - echo "Сборка проекта"
-    - echo "Собранный проект" > build.txt
+    - ./gradlew clean test
+    - ./gradlew allureReport
   artifacts:
-    paths: build.txt
-
-test1:
-  stage: test
-  script:
-    - echo "Первый набор тестов"
-    - echo $TEST_1_SUCCESS
-
-test2:
-  stage: test
-  script:
-    - echo "Второй набор тестов"
-    - echo $TEST_2_SUCCESS
-
-deploy:
-  stage: deploy
-  script:
-    - echo $(cat build.txt)
-    - echo "Развертывание проекта"
-  needs:
-    - build
-  rules:
-    - if: $TEST_1_SUCCESS == "true" && $TEST_2_SUCCESS == "true"
-
-after_script:
-  - echo "Скрипт после основных инструкций (в каждой задаче)"
+    paths:
+      - build/reports/allure-report/allureReport/*
