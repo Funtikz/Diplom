@@ -1,0 +1,140 @@
+
+plugins {
+    id 'java'
+    id 'org.gradle.test-retry' version '1.5.8'
+    id 'io.qameta.allure' version "2.12.0"
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    versions = [
+            allureVersion        : '2.29.0',
+            apiguardian          : '1.1.2',
+            aspectjWeaverVersion : '1.9.22.1',
+            assertjCore          : '3.24.2',
+            awaitility           : '4.3.0',
+            browsermobCore       : '2.1.5',
+            faker                : '1.0.2',
+            jackson              : '2.15.2',
+            jsonVersion          : '20250107',
+            junitBom             : '5.10.0',
+            kafka                : '3.9.1',
+            logbackClassic       : '1.5.13',
+            lombok               : '1.18.38',
+            postgresql           : '42.7.2',
+            playwright           : '1.55.0',
+            restAssured          : '5.5.0',
+    ]
+}
+
+dependencies {
+    implementation("org.apiguardian:apiguardian-api:${versions.apiguardian}")
+
+    // Playwright
+    implementation "com.microsoft.playwright:playwright:${versions.playwright}"
+
+    // JUnit 5
+    testImplementation platform("org.junit:junit-bom:${versions.junitBom}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.platform:junit-platform-launcher'
+    implementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
+
+    // Logging
+    implementation "ch.qos.logback:logback-classic:${versions.logbackClassic}"
+
+    // AssertJ
+    implementation "org.assertj:assertj-core:${versions.assertjCore}"
+
+    // Allure
+    testImplementation "io.qameta.allure:allure-junit5:${versions.allureVersion}"
+    testImplementation "io.qameta.allure:allure-selenide:${versions.allureVersion}"
+    testImplementation "io.qameta.allure:allure-assertj:${versions.allureVersion}"
+    testImplementation "io.qameta.allure:allure-java-commons:${versions.allureVersion}"
+    allureCommandline group: 'io.qameta.allure', name: 'allure-commandline', version: versions.allureVersion, ext: 'zip'
+
+    // AspectJ Weaver for Allure
+    runtimeOnly "org.aspectj:aspectjweaver:${versions.aspectjWeaverVersion}"
+
+    // RestAssured for Api tests
+    implementation "io.rest-assured:rest-assured:${versions.restAssured}"
+    implementation "org.json:json:${versions.jsonVersion}"
+
+    //kafka
+    implementation "org.apache.kafka:kafka-clients:${versions.kafka}"
+    implementation "com.fasterxml.jackson.core:jackson-core:${versions.jackson}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+
+    implementation "org.awaitility:awaitility-groovy:${versions.awaitility}"
+
+    // Lombok
+    compileOnly("org.projectlombok:lombok:${versions.lombok}")
+    annotationProcessor("org.projectlombok:lombok:${versions.lombok}")
+
+    testCompileOnly("org.projectlombok:lombok:${versions.lombok}")
+    testAnnotationProcessor("org.projectlombok:lombok:${versions.lombok}")
+
+    // Postgresql
+    implementation "org.postgresql:postgresql:${versions.postgresql}"
+
+    //Библиотеки для почтовых тестов
+    implementation("com.sun.mail:javax.mail:1.6.2")
+    implementation("javax.xml.ws:jaxws-api:2.3.1")
+    implementation("com.microsoft.ews-java-api:ews-java-api:2.0")
+
+    //Библиотеки для xlsx
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation('org.apache.poi:poi-ooxml:5.2.5')
+    implementation("commons-io:commons-io:2.15.1")
+    implementation("joda-time:joda-time:2.12.5")
+
+    //faker
+    implementation("com.github.javafaker:javafaker:${versions.faker}")
+
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+ext.commonSystemProperties = [
+        'env': System.getenv('ENV') ?: 'stage',
+        'browser': System.getenv('BROWSER') ?: 'CHROMIUM',
+        'login.1': System.getenv('USER_LOGIN_1') ?: '216846',
+        'pass.1': System.getenv('USER_PASS_1') ?: 'N3200558819',
+        'isVideoRecord': System.getenv('IS_VIDEO_RECORD') ?: 'true',
+]
+
+// Общая конфигурация для всех тестовых задач
+def configureTestTask(Test task) {
+    task.useJUnitPlatform()
+    task.maxParallelForks = Math.min(4, Runtime.runtime.availableProcessors())
+    task.forkEvery = 1
+    task.retry {
+        maxRetries = 2
+        maxFailures = 20
+        failOnPassedAfterRetry = false
+    }
+    task.systemProperties = project.commonSystemProperties
+    task.testLogging {
+        lifecycle {
+            events "started", "skipped", "failed", "standard_error", "standard_out"
+            exceptionFormat "full"
+        }
+    }
+    task.outputs.upToDateWhen { false }
+}
+
+// Таска для запуска на локале
+test {
+    group = 'verification'
+    description = 'Runs all tests except critical ones'
+    configureTestTask(it)
+}
+
+
+
