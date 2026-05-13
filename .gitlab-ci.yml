@@ -7,7 +7,7 @@ default:
 stages:
   - test
 
-Integration test:
+integration_test:
   stage: test
   script:
     - ./gradlew clean test
