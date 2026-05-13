@@ -2,4 +2,4 @@ test:
   tags:
     - shelllocal
   script:
-    - echo "Pipeline works"
+    - echo "RUNNING OK"
