@@ -6,8 +6,8 @@ integration_test_allure:
   tags:
     - shelllocal
   script:
-    - gradlew.bat clean test
-    - gradlew.bat allureReport
+    - .\gradlew.bat clean test
+    - .\gradlew.bat allureReport
   artifacts:
     paths:
       - build/reports/
