@@ -1,5 +1,0 @@
-test:
-  script:
-    - echo "HELLO FROM GITLAB CI"
-    - whoami
-    - echo "RUNNER IS WORKING"
