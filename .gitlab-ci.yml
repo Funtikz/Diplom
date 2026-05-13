@@ -2,3 +2,4 @@
 test:
   script:
     - echo "RUNNING OK"
+
