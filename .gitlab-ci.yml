@@ -1,0 +1,18 @@
+image: gradle:alpine
+
+
+default:
+  tags:
+    - shelllocal
+
+stages:
+  - test
+
+Integration test with Allure:
+  stage: test
+  script:
+    - ./gradlew clean test
+    - ./gradlew allureReport
+  artifacts:
+    paths:
+      - build/reports/allure-report/allureReport/*
