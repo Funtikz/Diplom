@@ -1,37 +1,46 @@
+image: ubuntu:latest
+
+variables:
+  TEST_1_SUCCESS: "true"
+  TEST_2_SUCCESS: "true"
+
+before_script:
+  - echo "Скрипт до основных инструкций (в каждой задаче)"
+
 stages:
-  - install
   - test
   - build
   - deploy
 
-variables:
-  NODE_ENV: production
-
-install:
-  stage: install
-  script:
-    - echo "Installing dependencies..."
-    - npm install
-
-test:
-  stage: test
-  script:
-    - echo "Running tests..."
-    - npm test
-
 build:
   stage: build
   script:
-    - echo "Building project..."
-    - npm run build
+    - echo "Сборка проекта"
+    - echo "Собранный проект" > build.txt
   artifacts:
-    paths:
-      - dist/
+    paths: build.txt
+
+test1:
+  stage: test
+  script:
+    - echo "Первый набор тестов"
+    - echo $TEST_1_SUCCESS
+
+test2:
+  stage: test
+  script:
+    - echo "Второй набор тестов"
+    - echo $TEST_2_SUCCESS
 
 deploy:
   stage: deploy
   script:
-    - echo "Deploying application..."
-    - ./deploy.sh
-  only:
-    - main
+    - echo $(cat build.txt)
+    - echo "Развертывание проекта"
+  needs:
+    - build
+  rules:
+    - if: $TEST_1_SUCCESS == "true" && $TEST_2_SUCCESS == "true"
+
+after_script:
+  - echo "Скрипт после основных инструкций (в каждой задаче)"
