@@ -1,10 +1,5 @@
-stages:
-  - test
-
-test_job:
-  image: alpine:latest
-  stage: test
+test:
+  tags:
+    - shelllocal
   script:
-    - echo "Hello from GitLab CI"
-    - uname -a
-    - cat /etc/os-release
+    - echo "Pipeline works"
