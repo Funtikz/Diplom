@@ -1,9 +1,10 @@
-﻿image: gradle:8.5-jdk17
-
 stages:
   - test
 
-integration_test:
+test_job:
+  image: alpine:latest
   stage: test
   script:
-    - echo "OK"
+    - echo "Hello from GitLab CI"
+    - uname -a
+    - cat /etc/os-release
