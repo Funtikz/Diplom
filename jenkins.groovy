@@ -1,6 +1,6 @@
-import groovy.json.JsonSlurper
+import groovy.json.JsonSlurperClassic
 
-task_branch = "${TEST_BRANCH_NAME}"
+def task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
         ? task_branch.split('/')[1]
         : task_branch.trim()
@@ -16,53 +16,40 @@ node {
             "base_url=${base_git_url}"
     ]) {
 
-        stage("Checkout Branch") {
-            if (!branch_cutted.contains("master")) {
-                getProject(base_git_url, branch_cutted)
-            }
+        stage("Checkout") {
+            cleanWs()
+
+            checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: branch_cutted]],
+                    userRemoteConfigs: [[url: base_git_url]]
+            ])
         }
 
         try {
-            stage("Запуск тестов") {
-                runTests()
+            stage("Tests") {
+                sh """
+                    chmod +x gradlew
+                    ./gradlew clean test
+                """
             }
         } finally {
+
             stage("Allure") {
-                generateAllure()
+                allure([
+                        includeProperties: true,
+                        reportBuildPolicy: 'ALWAYS',
+                        results: [[path: 'build/allure-results']]
+                ])
             }
 
-            stage("Telegram") {
+            stage("Telegram Report") {
                 sendTelegramReport(TELEGRAM_CHAT_ID, branch_cutted)
             }
         }
     }
 }
 
-def runTests() {
-    sh """
-        chmod +x gradlew
-        ./gradlew clean test
-    """
-}
-
-def getProject(String repo, String branch) {
-    cleanWs()
-
-    checkout([
-            $class: 'GitSCM',
-            branches: [[name: branch]],
-            userRemoteConfigs: [[url: repo]]
-    ])
-}
-
-def generateAllure() {
-    allure([
-            includeProperties: true,
-            jdk: '',
-            reportBuildPolicy: 'ALWAYS',
-            results: [[path: 'build/allure-results']]
-    ])
-}
 def sendTelegramReport(String chatId, String branchName) {
 
     def summaryFile = "allure-report/widgets/summary.json"
@@ -74,7 +61,7 @@ def sendTelegramReport(String chatId, String branchName) {
     def total = 0
 
     if (fileExists(summaryFile)) {
-        def json = readJSON file: summaryFile
+        def json = new JsonSlurperClassic().parseText(readFile(summaryFile))
 
         passed = json.statistic.passed ?: 0
         failed = json.statistic.failed ?: 0
@@ -84,18 +71,22 @@ def sendTelegramReport(String chatId, String branchName) {
     }
 
     def status = currentBuild.currentResult ?: "SUCCESS"
-    def emoji = status == "SUCCESS" ? "✅" : status == "FAILURE" ? "❌" : "⚠️"
 
-    def successRate = total > 0 ? (passed * 100.0 / total).round(1) : 0
+    def emoji = status == "SUCCESS" ? "✅"
+            : status == "FAILURE" ? "❌"
+            : "⚠️"
+
+    def successRate = total > 0
+            ? String.format("%.1f", (passed * 100.0 / total))
+            : "0.0"
 
     def message = """
 ${emoji} Jenkins Report
 
-📦 ${env.JOB_NAME}
-🔢 #${env.BUILD_NUMBER}
-🌿 ${branchName}
-
-✅ Passed: ${passed}
+📦 Job: ${env.JOB_NAME}
+🔢 Build: #${env.BUILD_NUMBER}
+🌿 Branch: ${branchName}
+📊 Passed: ${passed}
 ❌ Failed: ${failed}
 💥 Broken: ${broken}
 ⏭ Skipped: ${skipped}
@@ -105,56 +96,62 @@ ${emoji} Jenkins Report
 
     withCredentials([string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')]) {
 
-        // TEXT
+        // 1. send text
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
         """
 
-        // SVG chart (STABLE)
+        // 2. generate REAL image using HTML (no libs needed)
         sh """
-cat > chart.svg <<EOF
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
-  <circle r="80" cx="150" cy="150" fill="none"
-    stroke="#2ecc71" stroke-width="40"
-    stroke-dasharray="${passed} ${total}" />
+cat > report.html <<EOF
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body style="font-family: Arial; text-align:center;">
 
-  <circle r="80" cx="150" cy="150" fill="none"
-    stroke="#e74c3c" stroke-width="40"
-    stroke-dasharray="${failed} ${total}"
-    stroke-dashoffset="-${passed}" />
+<h2>Jenkins Test Report</h2>
 
-  <circle r="80" cx="150" cy="150" fill="none"
-    stroke="#f39c12" stroke-width="40"
-    stroke-dasharray="${broken} ${total}"
-    stroke-dashoffset="-${passed + failed}" />
+<p>Passed: ${passed}</p>
+<p>Failed: ${failed}</p>
+<p>Broken: ${broken}</p>
+<p>Skipped: ${skipped}</p>
 
-  <text x="150" y="155" text-anchor="middle" font-size="20">
-    ${successRate}%
-  </text>
-</svg>
+<h3>Success Rate: ${successRate}%</h3>
+
+</body>
+</html>
 EOF
         """
 
-        // SEND IMAGE (IMPORTANT: document is more stable than photo)
+        // 3. render image using Playwright (SAFE WAY)
         sh """
-            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
-              -F chat_id=${chatId} \
-              -F document=@chart.svg \
-              -F caption="📊 Test Chart #${env.BUILD_NUMBER}"
+node -e "
+const fs = require('fs');
+const { chromium } = require('playwright');
+
+(async () => {
+  const browser = await chromium.launch({ args: ['--no-sandbox'] });
+  const page = await browser.newPage();
+
+  const html = fs.readFileSync('report.html', 'utf8');
+  await page.setContent(html);
+
+  await page.screenshot({ path: 'report.png' });
+
+  await browser.close();
+})();
+"
         """
 
-        // ARCHIVE ALLURE
+        // 4. send image
         sh """
-            tar -czf allure-report.tar.gz allure-report
-        """
-
-        sh """
-            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
+            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendPhoto" \
               -F chat_id=${chatId} \
-              -F document=@allure-report.tar.gz \
-              -F caption="📊 Allure #${env.BUILD_NUMBER}"
+              -F photo=@report.png \
+              -F caption="📊 Build #${env.BUILD_NUMBER}"
         """
     }
 }
