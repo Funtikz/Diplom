@@ -61,7 +61,7 @@ def sendTelegramReport(String chatId, String branchName) {
     def total = 0
 
     if (fileExists(summaryFile)) {
-        def json = new JsonSlurperClassic().parseText(readFile(summaryFile))
+        def json = new groovy.json.JsonSlurper().parseText(readFile(summaryFile))
 
         passed = json.statistic.passed ?: 0
         failed = json.statistic.failed ?: 0
