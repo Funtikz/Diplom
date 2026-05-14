@@ -73,7 +73,6 @@ def generateAllure() {
             results: [[path: 'build/allure-results']]
     ])
 }
-
 def sendTelegramReport(String chatId, String branchName) {
 
     def summaryFile = "allure-report/widgets/summary.json"
@@ -139,7 +138,39 @@ ${allureUrl}
               --data-urlencode "text=${message}"
         """
 
-        // 2. zip report (fallback if zip not installed)
+        // 2. generate SVG pie chart (NO python, NO libs)
+        sh """
+cat > chart.svg <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 32 32">
+  <circle r="16" cx="16" cy="16" fill="#2ecc71"
+    stroke-dasharray="${passed} ${total}" stroke-width="32" />
+
+  <circle r="16" cx="16" cy="16" fill="#e74c3c"
+    stroke-dasharray="${failed} ${total}" stroke-dashoffset="-${passed}" stroke-width="32" />
+
+  <circle r="16" cx="16" cy="16" fill="#f39c12"
+    stroke-dasharray="${broken} ${total}" stroke-dashoffset="-${passed + failed}" stroke-width="32" />
+
+  <circle r="16" cx="16" cy="16" fill="#95a5a6"
+    stroke-dasharray="${skipped} ${total}" stroke-dashoffset="-${passed + failed + broken}" stroke-width="32" />
+
+  <text x="16" y="16" text-anchor="middle" dominant-baseline="middle"
+    font-size="3" fill="#000">
+    ${successRate}%
+  </text>
+</svg>
+EOF
+        """
+
+        // 3. send SVG as image
+        sh """
+            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendPhoto" \
+              -F chat_id=${chatId} \
+              -F photo=@chart.svg \
+              -F caption="📊 Test Results #${env.BUILD_NUMBER}"
+        """
+
+        // 4. zip Allure report
         sh """
             if command -v zip >/dev/null 2>&1; then
                 zip -r allure-report.zip allure-report
@@ -148,7 +179,7 @@ ${allureUrl}
             fi
         """
 
-        // 3. send archive
+        // 5. send archive
         sh """
             if [ -f allure-report.zip ]; then
                 FILE=allure-report.zip
