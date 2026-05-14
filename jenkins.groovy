@@ -1,3 +1,4 @@
+
 task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
         ? task_branch.split('/')[1]
@@ -78,23 +79,35 @@ def generateAllure() {
 }
 
 def sendTelegramReport(String chatId, String branchName) {
+
+    def summaryFile = "allure-report/widgets/summary.json"
+
+    def passed = 0
+    def failed = 0
+    def broken = 0
+    def skipped = 0
+    def total = 0
+
+    if (fileExists(summaryFile)) {
+        def json = new JsonSlurper().parseText(readFile(summaryFile))
+
+        passed = json.statistic.passed ?: 0
+        failed = json.statistic.failed ?: 0
+        broken = json.statistic.broken ?: 0
+        skipped = json.statistic.skipped ?: 0
+        total = json.statistic.total ?: 0
+    }
+
     def status = currentBuild.currentResult ?: "SUCCESS"
 
     def statusEmoji = "ℹ️"
-    switch (status) {
-        case "SUCCESS":
-            statusEmoji = "✅"
-            break
-        case "FAILURE":
-            statusEmoji = "❌"
-            break
-        case "UNSTABLE":
-            statusEmoji = "⚠️"
-            break
-        case "ABORTED":
-            statusEmoji = "⛔"
-            break
-    }
+    if (status == "SUCCESS") statusEmoji = "✅"
+    else if (status == "FAILURE") statusEmoji = "❌"
+    else if (status == "UNSTABLE") statusEmoji = "⚠️"
+
+    def successRate = total > 0
+            ? String.format('%.1f', (passed * 100.0 / total))
+            : "0.0"
 
     def allureUrl = "${env.BUILD_URL}allure/"
 
@@ -106,17 +119,41 @@ ${statusEmoji} Jenkins Build Report
 🌿 Branch: ${branchName}
 📌 Status: ${status}
 
-📊 Allure Report:
+📊 Test Summary:
+✅ Passed: ${passed}
+❌ Failed: ${failed}
+💥 Broken: ${broken}
+⏭ Skipped: ${skipped}
+📦 Total: ${total}
+📈 Success Rate: ${successRate}%
+
+🔗 Allure Report:
 ${allureUrl}
 """
 
     withCredentials([
             string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')
     ]) {
+
+        // 1. отправляем текст
         sh """
             curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
+        """
+
+        // 2. делаем ZIP отчёта
+        sh """
+            cd allure-report
+            zip -r ../allure-report.zip .
+        """
+
+        // 3. отправляем ZIP
+        sh """
+            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+              -F chat_id=${chatId} \
+              -F document=@allure-report.zip \
+              -F caption="📊 Allure Report #${env.BUILD_NUMBER}"
         """
     }
 }
