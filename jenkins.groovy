@@ -193,35 +193,43 @@ def sendEmailReport(String branchName) {
     emailext(
             to: "228funtikx@gmail.com",
             subject: "Jenkins Build #${env.BUILD_NUMBER} - ${status}",
+            mimeType: 'text/html',
             body: """
-<html>
-<body>
-<h2 style="color:${color}">Jenkins Test Report</h2>
+        <html>
+        <body style="font-family: Arial; font-size: 14px;">
 
-<p><b>Project:</b> ${env.JOB_NAME}</p>
-<p><b>Branch:</b> ${branchName}</p>
-<p><b>Build:</b> #${env.BUILD_NUMBER}</p>
-<p><b>Status:</b> ${status}</p>
+        <h2 style="color:${color}">
+            Jenkins Test Report
+        </h2>
 
-<hr>
+        <p><b>Project:</b> ${env.JOB_NAME}</p>
+        <p><b>Branch:</b> ${branchName}</p>
+        <p><b>Build:</b> #${env.BUILD_NUMBER}</p>
+        <p><b>Status:</b> ${status}</p>
 
-<h3>Test Results</h3>
-<ul>
-<li>Passed: ${passed}</li>
-<li>Failed: ${failed}</li>
-<li>Broken: ${broken}</li>
-<li>Skipped: ${skipped}</li>
-<li>Total: ${total}</li>
-</ul>
+        <hr>
 
-<p><b>Success rate:</b> ${String.format('%.1f', successRate)}%</p>
+        <h3>Test Results</h3>
+        <ul>
+            <li>Passed: ${passed}</li>
+            <li>Failed: ${failed}</li>
+            <li>Broken: ${broken}</li>
+            <li>Skipped: ${skipped}</li>
+            <li>Total: ${total}</li>
+        </ul>
 
-<hr>
+        <p><b>Success rate:</b> ${String.format('%.1f', successRate)}%</p>
 
-<p>🔗 <a href="${env.BUILD_URL}">Open Jenkins Build</a></p>
+        <hr>
 
-</body>
-</html>
-"""
+        <p>
+            🔗 <a href="${env.BUILD_URL}">
+                Open Jenkins Build
+            </a>
+        </p>
+
+        </body>
+        </html>
+    """
     )
 }
