@@ -1,4 +1,4 @@
-import groovy.json.JsonSlurperClassic
+import groovy.json.JsonSlurper
 
 task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
@@ -90,7 +90,8 @@ def sendTelegramReport(String chatId, String branchName) {
     def total = 0
 
     if (fileExists(summaryFile)) {
-        def json = new JsonSlurperClassic().parseText(readFile(summaryFile))
+        def jsonText = readFile(summaryFile)
+        def json = new groovy.json.JsonSlurper().parseText(jsonText)
 
         passed = json.statistic.passed ?: 0
         failed = json.statistic.failed ?: 0
