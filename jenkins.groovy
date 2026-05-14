@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 
 task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
