@@ -1,4 +1,4 @@
-import groovy.json.JsonSlurperClassic
+import groovy.json.JsonSlurper
 
 def task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
@@ -61,7 +61,8 @@ def sendTelegramReport(String chatId, String branchName) {
     def total = 0
 
     if (fileExists(summaryFile)) {
-        def json = new groovy.json.JsonSlurper().parseText(readFile(summaryFile))
+        def jsonText = readFile(summaryFile)
+        def json = new JsonSlurper().parseText(jsonText)
 
         passed = json.statistic.passed ?: 0
         failed = json.statistic.failed ?: 0
@@ -71,13 +72,12 @@ def sendTelegramReport(String chatId, String branchName) {
     }
 
     def status = currentBuild.currentResult ?: "SUCCESS"
-
     def emoji = status == "SUCCESS" ? "✅"
             : status == "FAILURE" ? "❌"
             : "⚠️"
 
     def successRate = total > 0
-            ? String.format("%.1f", (passed * 100.0 / total))
+            ? String.format('%.1f', (passed * 100.0 / total))
             : "0.0"
 
     def message = """
@@ -86,72 +86,74 @@ ${emoji} Jenkins Report
 📦 Job: ${env.JOB_NAME}
 🔢 Build: #${env.BUILD_NUMBER}
 🌿 Branch: ${branchName}
+
 📊 Passed: ${passed}
 ❌ Failed: ${failed}
 💥 Broken: ${broken}
 ⏭ Skipped: ${skipped}
 📦 Total: ${total}
+
 📈 Success: ${successRate}%
 """
 
     withCredentials([string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')]) {
 
-        // 1. send text
+        // 1. text report
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
         """
 
-        // 2. generate REAL image using HTML (no libs needed)
+        // 2. SVG "chart" (Telegram renders it as image)
         sh """
-cat > report.html <<EOF
-<html>
-<head>
-<meta charset="UTF-8">
-</head>
-<body style="font-family: Arial; text-align:center;">
+cat > chart.svg <<EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="240">
+  <rect width="420" height="240" fill="#ffffff"/>
 
-<h2>Jenkins Test Report</h2>
+  <text x="20" y="40" font-size="20">Test Results</text>
 
-<p>Passed: ${passed}</p>
-<p>Failed: ${failed}</p>
-<p>Broken: ${broken}</p>
-<p>Skipped: ${skipped}</p>
+  <text x="20" y="80" font-size="16" fill="green">Passed: ${passed}</text>
+  <text x="20" y="110" font-size="16" fill="red">Failed: ${failed}</text>
+  <text x="20" y="140" font-size="16" fill="orange">Broken: ${broken}</text>
+  <text x="20" y="170" font-size="16" fill="gray">Skipped: ${skipped}</text>
 
-<h3>Success Rate: ${successRate}%</h3>
-
-</body>
-</html>
+  <text x="20" y="210" font-size="18">
+    Success Rate: ${successRate}%
+  </text>
+</svg>
 EOF
         """
 
-        // 3. render image using Playwright (SAFE WAY)
-        sh """
-node -e "
-const fs = require('fs');
-const { chromium } = require('playwright');
-
-(async () => {
-  const browser = await chromium.launch({ args: ['--no-sandbox'] });
-  const page = await browser.newPage();
-
-  const html = fs.readFileSync('report.html', 'utf8');
-  await page.setContent(html);
-
-  await page.screenshot({ path: 'report.png' });
-
-  await browser.close();
-})();
-"
-        """
-
-        // 4. send image
+        // 3. send image (WORKS ALWAYS)
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendPhoto" \
               -F chat_id=${chatId} \
-              -F photo=@report.png \
+              -F photo=@chart.svg \
               -F caption="📊 Build #${env.BUILD_NUMBER}"
+        """
+
+        // 4. Allure archive
+        sh """
+            if command -v zip >/dev/null 2>&1; then
+                zip -r allure-report.zip allure-report
+            else
+                tar -czf allure-report.tar.gz allure-report
+            fi
+        """
+
+        // 5. send report
+        sh """
+            if [ -f allure-report.zip ]; then
+                FILE=allure-report.zip
+            else
+                FILE=allure-report.tar.gz
+            fi
+
+            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
+              -F chat_id=${chatId} \
+              -F document=@\$FILE \
+              -F caption="📊 Allure Report #${env.BUILD_NUMBER}"
         """
     }
 }
