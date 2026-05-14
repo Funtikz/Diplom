@@ -1,5 +1,3 @@
-import groovy.json.JsonSlurper
-
 task_branch = "${TEST_BRANCH_NAME}"
 def branch_cutted = task_branch.contains("origin")
         ? task_branch.split('/')[1]
@@ -47,13 +45,10 @@ node {
 
 def runTests() {
     try {
-        labelledShell(
-                label: "Run tests",
-                script: """
-                chmod +x gradlew
-                ./gradlew clean test
-            """
-        )
+        sh """
+            chmod +x gradlew
+            ./gradlew clean test
+        """
     } finally {
         echo "Test execution finished (some tests may have failed)"
     }
@@ -137,24 +132,33 @@ ${allureUrl}
             string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')
     ]) {
 
-        // 1. отправляем текст
+        // 1. send text
         sh """
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
         """
 
-        // 2. делаем ZIP отчёта
+        // 2. zip report (fallback if zip not installed)
         sh """
-            cd allure-report
-            zip -r ../allure-report.zip .
+            if command -v zip >/dev/null 2>&1; then
+                zip -r allure-report.zip allure-report
+            else
+                tar -czf allure-report.tar.gz allure-report
+            fi
         """
 
-        // 3. отправляем ZIP
+        // 3. send archive
         sh """
-            curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+            if [ -f allure-report.zip ]; then
+                FILE=allure-report.zip
+            else
+                FILE=allure-report.tar.gz
+            fi
+
+            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
               -F chat_id=${chatId} \
-              -F document=@allure-report.zip \
+              -F document=@\$FILE \
               -F caption="📊 Allure Report #${env.BUILD_NUMBER}"
         """
     }
