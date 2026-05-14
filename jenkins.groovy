@@ -5,6 +5,7 @@ base_git_url = "https://github.com/Funtikz/Diplom.git"
 
 node {
     withEnv(["branch=${branch_cutted}", "base_url=${base_git_url}"]) {
+
         stage("Checkout Branch") {
             if (!"$branch_cutted".contains("master")) {
                 try {
@@ -20,7 +21,7 @@ node {
 
         try {
             stage("Запуск тестов") {
-                parallel getTestStages(["apiTests", "uiTests"])
+                runTests()
             }
         } finally {
             stage("Allure") {
@@ -28,16 +29,6 @@ node {
             }
         }
     }
-}
-
-def getTestStages(testTypes) {
-    def stages = [:]
-    testTypes.each { type ->
-        stages["${type}"] = {
-            runTests()
-        }
-    }
-    return stages
 }
 
 def runTests() {
