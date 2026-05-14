@@ -44,14 +44,10 @@ node {
 }
 
 def runTests() {
-    try {
-        sh """
-            chmod +x gradlew
-            ./gradlew clean test
-        """
-    } finally {
-        echo "Test execution finished (some tests may have failed)"
-    }
+    sh """
+        chmod +x gradlew
+        ./gradlew clean test
+    """
 }
 
 def getProject(String repo, String branch) {
@@ -73,6 +69,7 @@ def generateAllure() {
             results: [[path: 'build/allure-results']]
     ])
 }
+
 def sendTelegramReport(String chatId, String branchName) {
 
     def summaryFile = "allure-report/widgets/summary.json"
@@ -131,14 +128,14 @@ ${allureUrl}
             string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')
     ]) {
 
-        // 1. send text
+        // 1. TEXT REPORT
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
         """
 
-        // 2. generate SVG pie chart (NO python, NO libs)
+        // 2. CREATE PIE CHART (SVG → PNG)
         sh """
 cat > chart.svg <<EOF
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 32 32">
@@ -152,7 +149,8 @@ cat > chart.svg <<EOF
     stroke-dasharray="${broken} ${total}" stroke-dashoffset="-${passed + failed}" stroke-width="32" />
 
   <circle r="16" cx="16" cy="16" fill="#95a5a6"
-    stroke-dasharray="${skipped} ${total}" stroke-dashoffset="-${passed + failed + broken}" stroke-width="32" />
+    stroke-dasharray="${skipped} ${total}" stroke-width="32"
+    stroke-dashoffset="-${passed + failed + broken}" />
 
   <text x="16" y="16" text-anchor="middle" dominant-baseline="middle"
     font-size="3" fill="#000">
@@ -160,17 +158,29 @@ cat > chart.svg <<EOF
   </text>
 </svg>
 EOF
+
+# convert SVG -> PNG
+if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert chart.svg -o chart.png
+elif command -v convert >/dev/null 2>&1; then
+    convert chart.svg chart.png
+else
+    echo "No converter found"
+    touch chart.png
+fi
         """
 
-        // 3. send SVG as image
+        // 3. SEND IMAGE
         sh """
-            curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendPhoto" \
-              -F chat_id=${chatId} \
-              -F photo=@chart.svg \
-              -F caption="📊 Test Results #${env.BUILD_NUMBER}"
+            if [ -f chart.png ]; then
+                curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendPhoto" \
+                  -F chat_id=${chatId} \
+                  -F photo=@chart.png \
+                  -F caption="📊 Test Results #${env.BUILD_NUMBER}"
+            fi
         """
 
-        // 4. zip Allure report
+        // 4. ZIP ALLURE REPORT
         sh """
             if command -v zip >/dev/null 2>&1; then
                 zip -r allure-report.zip allure-report
@@ -179,7 +189,7 @@ EOF
             fi
         """
 
-        // 5. send archive
+        // 5. SEND ZIP
         sh """
             if [ -f allure-report.zip ]; then
                 FILE=allure-report.zip
