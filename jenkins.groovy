@@ -1,21 +1,26 @@
 task_branch = "${TEST_BRANCH_NAME}"
-def branch_cutted = task_branch.contains("origin") ? task_branch.split('/')[1] : task_branch.trim()
-currentBuild.displayName = "$branch_cutted"
-base_git_url = "https://github.com/Funtikz/Diplom.git"
+def branch_cutted = task_branch.contains("origin")
+        ? task_branch.split('/')[1]
+        : task_branch.trim()
 
-// Укажи chat_id своей Telegram-группы
+currentBuild.displayName = branch_cutted
+
+def base_git_url = "https://github.com/Funtikz/Diplom.git"
 def TELEGRAM_CHAT_ID = "-1003786359995"
 
 node {
-    withEnv(["branch=${branch_cutted}", "base_url=${base_git_url}"]) {
+    withEnv([
+            "branch=${branch_cutted}",
+            "base_url=${base_git_url}"
+    ]) {
 
         stage("Checkout Branch") {
-            if (!"$branch_cutted".contains("master")) {
+            if (!branch_cutted.contains("master")) {
                 try {
-                    getProject("$base_git_url", "$branch_cutted")
+                    getProject(base_git_url, branch_cutted)
                 } catch (err) {
-                    echo "Failed get branch $branch_cutted"
-                    throw("${err}")
+                    echo "Failed get branch ${branch_cutted}"
+                    throw err
                 }
             } else {
                 echo "Current branch is master"
@@ -32,7 +37,7 @@ node {
             }
 
             stage("Telegram Notification") {
-                sendTelegramReport(TELEGRAM_CHAT_ID)
+                sendTelegramReport(TELEGRAM_CHAT_ID, branch_cutted)
             }
         }
     }
@@ -54,11 +59,12 @@ def runTests() {
 
 def getProject(String repo, String branch) {
     cleanWs()
-    checkout scm: [
+
+    checkout([
             $class: 'GitSCM',
             branches: [[name: branch]],
             userRemoteConfigs: [[url: repo]]
-    ]
+    ])
 }
 
 def generateAllure() {
@@ -71,10 +77,24 @@ def generateAllure() {
     ])
 }
 
-def sendTelegramReport(String chatId) {
-    // Если currentResult ещё не установлен, считаем сборку успешной
+def sendTelegramReport(String chatId, String branchName) {
     def status = currentBuild.currentResult ?: "SUCCESS"
-    def statusEmoji = status == "SUCCESS" ? "✅" : "❌"
+
+    def statusEmoji = "ℹ️"
+    switch (status) {
+        case "SUCCESS":
+            statusEmoji = "✅"
+            break
+        case "FAILURE":
+            statusEmoji = "❌"
+            break
+        case "UNSTABLE":
+            statusEmoji = "⚠️"
+            break
+        case "ABORTED":
+            statusEmoji = "⛔"
+            break
+    }
 
     def allureUrl = "${env.BUILD_URL}allure/"
 
@@ -83,16 +103,13 @@ ${statusEmoji} Jenkins Build Report
 
 📦 Job: ${env.JOB_NAME}
 🔢 Build: #${env.BUILD_NUMBER}
-🌿 Branch: ${branch_cutted}
+🌿 Branch: ${branchName}
 📌 Status: ${status}
 
 📊 Allure Report:
 ${allureUrl}
 """
 
-    // BOT_TOKEN должен быть создан в Jenkins Credentials
-    // Kind: Secret text
-    // ID: telegram-bot-token
     withCredentials([
             string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')
     ]) {
