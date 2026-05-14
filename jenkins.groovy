@@ -63,7 +63,6 @@ def generateAllure() {
             results: [[path: 'build/allure-results']]
     ])
 }
-
 def sendTelegramReport(String chatId, String branchName) {
 
     def summaryFile = "allure-report/widgets/summary.json"
@@ -75,7 +74,8 @@ def sendTelegramReport(String chatId, String branchName) {
     def total = 0
 
     if (fileExists(summaryFile)) {
-        def json = new JsonSlurper().parseText(readFile(summaryFile))
+        def json = readJSON file: summaryFile
+
         passed = json.statistic.passed ?: 0
         failed = json.statistic.failed ?: 0
         broken = json.statistic.broken ?: 0
@@ -105,14 +105,14 @@ ${emoji} Jenkins Report
 
     withCredentials([string(credentialsId: 'telegram-bot-token', variable: 'BOT_TOKEN')]) {
 
-        // 1. TEXT
+        // TEXT
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendMessage" \
               -d "chat_id=${chatId}" \
               --data-urlencode "text=${message}"
         """
 
-        // 2. SVG PIE CHART (NO dependencies)
+        // SVG chart (STABLE)
         sh """
 cat > chart.svg <<EOF
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
@@ -130,14 +130,14 @@ cat > chart.svg <<EOF
     stroke-dasharray="${broken} ${total}"
     stroke-dashoffset="-${passed + failed}" />
 
-  <text x="150" y="155" text-anchor="middle" font-size="20" fill="black">
+  <text x="150" y="155" text-anchor="middle" font-size="20">
     ${successRate}%
   </text>
 </svg>
 EOF
         """
 
-        // 3. SEND SVG (IMPORTANT: as document, not photo)
+        // SEND IMAGE (IMPORTANT: document is more stable than photo)
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
               -F chat_id=${chatId} \
@@ -145,12 +145,11 @@ EOF
               -F caption="📊 Test Chart #${env.BUILD_NUMBER}"
         """
 
-        // 4. archive allure
+        // ARCHIVE ALLURE
         sh """
             tar -czf allure-report.tar.gz allure-report
         """
 
-        // 5. send report
         sh """
             curl -s -X POST "https://api.telegram.org/bot\$BOT_TOKEN/sendDocument" \
               -F chat_id=${chatId} \
@@ -159,5 +158,3 @@ EOF
         """
     }
 }
-
-
