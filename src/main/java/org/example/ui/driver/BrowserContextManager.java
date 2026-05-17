@@ -60,6 +60,7 @@ public class BrowserContextManager {
         TestContext.getPage().setDefaultTimeout(5000);
         TestContext.getPage().setDefaultNavigationTimeout(30000);
 
+
         setupDownloadHandler(TestContext.getPage());
     }
 
