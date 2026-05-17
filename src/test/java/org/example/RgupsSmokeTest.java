@@ -76,4 +76,45 @@ public class RgupsSmokeTest extends BaseTest{
         Assertions.assertEquals("7", actualText);
     }
 
+    @SneakyThrows
+    @Test
+    void checkVakansii() {
+
+        RgupsMainPage rgupsPage = auth()
+                .click("//a[text()='Вакансии']");
+
+        getAllureUtils().takeScreenshot("Открыли раздел Вакансии");
+
+        rgupsPage.click("//a[text()='Просмотр вакансий']");
+
+        getAllureUtils().takeScreenshot("Открыли список вакансий");
+
+        String name = rgupsPage.getText(
+                "(//tr[td/a[contains(@href,'vacancy')]]/td[2])[1]"
+        );
+
+        String salary = rgupsPage.getText(
+                "(//tr[td/a[contains(@href,'vacancy')]]/td[4])[1]"
+        );
+
+        getAllureUtils().takeScreenshot("Получили данные первой вакансии из списка");
+
+        rgupsPage.click("(//tr[td/a[contains(@href,'vacancy')]]/td[5])[1]");
+        Thread.sleep(200);
+
+        getAllureUtils().takeScreenshot("Открыли карточку вакансии");
+
+        String currentSalary = rgupsPage.getText(
+                "//tr[th[normalize-space()='Зарплата']]/td"
+        );
+
+        String currentName = rgupsPage.getText("(//h3)[1]");
+
+        getAllureUtils().takeScreenshot("Сравниваем данные вакансии с карточкой");
+
+        Assertions.assertAll(
+                () -> Assertions.assertEquals(name, currentName, "Название вакансии не совпадает"),
+                () -> Assertions.assertEquals(salary, currentSalary, "Зарплата вакансии не совпадает")
+        );
+    }
 }
