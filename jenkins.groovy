@@ -11,44 +11,60 @@ def base_git_url = "https://github.com/Funtikz/Diplom.git"
 def TELEGRAM_CHAT_ID = "-1003786359995"
 
 node {
+
     withEnv([
             "branch=${branch_cutted}",
             "base_url=${base_git_url}"
     ]) {
 
-        stage("Checkout") {
-            cleanWs()
+        withCredentials([
+                string(
+                        credentialsId: 'OpenRouter',
+                        variable: 'OPENROUTER_API_KEY'
+                )
+        ]) {
 
-            checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: branch_cutted]],
-                    userRemoteConfigs: [[url: base_git_url]]
-            ])
-        }
+            stage("Checkout") {
 
-        try {
-            stage("Tests") {
-                sh """
-                    chmod +x gradlew
-                    ./gradlew clean test
-                """
-            }
-        } finally {
+                cleanWs()
 
-            stage("Allure") {
-                allure([
-                        includeProperties: true,
-                        reportBuildPolicy: 'ALWAYS',
-                        results: [[path: 'build/allure-results']]
+                checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: branch_cutted]],
+                        userRemoteConfigs: [[url: base_git_url]]
                 ])
             }
 
-            stage("Telegram Report") {
-                sendTelegramReport(TELEGRAM_CHAT_ID, branch_cutted)
-            }
+            try {
 
-            stage("Email Report") {
-                sendEmailReport(branch_cutted)
+                stage("Tests") {
+
+                    sh """
+                        chmod +x gradlew
+                        ./gradlew clean test
+                    """
+                }
+
+            } finally {
+
+                stage("Allure") {
+                    allure([
+                            includeProperties: true,
+                            reportBuildPolicy: 'ALWAYS',
+                            results: [[path: 'build/allure-results']]
+                    ])
+                }
+
+                stage("Telegram Report") {
+                    sendTelegramReport(
+                            TELEGRAM_CHAT_ID,
+                            branch_cutted
+                    )
+                }
+
+                stage("Email Report") {
+                    sendEmailReport(branch_cutted)
+                }
             }
         }
     }

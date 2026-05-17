@@ -1,5 +1,6 @@
 package org.example;
 
+import io.qameta.allure.Allure;
 import io.qameta.allure.Description;
 import lombok.SneakyThrows;
 import org.example.ui.pages.RgupsMainPage;
@@ -23,9 +24,12 @@ public class RgupsSmokeTest extends BaseTest{
     @SneakyThrows
     @Test
     void parallelTest(){
+
+        String apiKey =
+                System.getenv("OPENROUTER_API_KEY");
         new RgupsMainPage(getPage())
                 .open("https://portal.rgups.ru/index.php?r=site/login");
-        Thread.sleep(2000);
+        Allure.step(apiKey);
     }
 
 }
