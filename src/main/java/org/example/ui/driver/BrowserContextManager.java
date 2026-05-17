@@ -55,6 +55,11 @@ public class BrowserContextManager {
 
         TestContext.setBrowserContext(context);
         TestContext.setPage(context.newPage());
+
+        //Добавил глобальные таймауты для клика и т.д
+        TestContext.getPage().setDefaultTimeout(5000);
+        TestContext.getPage().setDefaultNavigationTimeout(30000);
+
         setupDownloadHandler(TestContext.getPage());
     }
 
