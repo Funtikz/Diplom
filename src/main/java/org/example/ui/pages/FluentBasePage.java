@@ -12,8 +12,12 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 import io.qameta.allure.Allure;
 import io.qameta.allure.Param;
 import io.qameta.allure.Step;
+import io.qameta.allure.model.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.example.ui.AIHealingService;
+import org.example.ui.DomCleaner;
+import org.example.ui.OpenRouterHealingService;
 import org.example.ui.allure.AllureUtils;
 import org.example.ui.driver.BrowserContextManager;
 import org.example.ui.driver.HighlightElements;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.TestInfo;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -312,11 +317,152 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         waitForLoadState();
         return self();
     }
-
     public T click(String xPath) {
-        waitForLocatorVisible(page.locator(xPath).first());
-        highlightElements.clickWithHighlight(xPath);
+
+        try {
+
+            waitForLocatorVisible(
+                    page.locator(xPath).first()
+            );
+
+            highlightElements.clickWithHighlight(xPath);
+
+        } catch (Exception originalException) {
+
+            Allure.label("ai-healing", "used");
+
+            Allure.parameter(
+                    "Broken locator",
+                    xPath
+            );
+
+            Allure.addAttachment(
+                    "Broken locator",
+                    """
+                    Locator requires manual update
+                    
+                    Original locator:
+                    %s
+                    
+                    Error:
+                    %s
+                    """.formatted(
+                            xPath,
+                            originalException.getMessage()
+                    )
+            );
+
+            String cleanDom =
+                    DomCleaner.clean(page.content());
+
+            AIHealingService healer =
+                    new OpenRouterHealingService();
+
+            String healedXpath;
+
+            try {
+
+                healedXpath =
+                        healer.healLocator(
+                                xPath,
+                                cleanDom
+                        );
+
+            } catch (Exception aiException) {
+
+                Allure.label(
+                        "ai-healing-status",
+                        "model-error"
+                );
+
+                Allure.addAttachment(
+                        "AI healing failed",
+                        aiException.getMessage()
+                );
+
+                throw new RuntimeException(
+                        "AI healing failed",
+                        aiException
+                );
+            }
+
+            Allure.parameter(
+                    "Healed locator",
+                    healedXpath
+            );
+
+            Allure.addAttachment(
+                    "Healed locator",
+                    """
+                    Original locator:
+                    %s
+                    
+                    Healed locator:
+                    %s
+                    """.formatted(
+                            xPath,
+                            healedXpath
+                    )
+            );
+
+            try {
+
+                waitForLocatorVisible(
+                        page.locator(healedXpath).first()
+                );
+
+                highlightElements
+                        .clickWithHighlight(healedXpath);
+
+                Allure.label(
+                        "test-maintenance",
+                        "required"
+                );
+
+                Allure.label(
+                        "ai-healing-status",
+                        "success"
+                );
+
+                Allure.step(
+                        "SELF-HEALING APPLIED",
+                        Status.BROKEN
+                );
+
+            } catch (Exception healedException) {
+
+                Allure.label(
+                        "ai-healing-status",
+                        "failed"
+                );
+
+                Allure.addAttachment(
+                        "Healed locator failed",
+                        """
+                        Original locator:
+                        %s
+                        
+                        Healed locator:
+                        %s
+                        
+                        Error:
+                        %s
+                        """.formatted(
+                                xPath,
+                                healedXpath,
+                                healedException.getMessage()
+                        )
+                );
+
+                throw new RuntimeException(
+                        "Healed locator also failed",
+                        healedException
+                );
+            }
+        }
+
         waitForLoadState();
+
         return self();
     }
 
