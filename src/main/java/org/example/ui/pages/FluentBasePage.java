@@ -487,11 +487,12 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
 
             testResult.setDescription(
                     """
-                    🤖 AI SELF-HEALING APPLIED
+                    🤖 AI SELF-HEALING ПРИМЕНЕН
                     
-                    Test continued successfully using AI-recovered locator.
+                    AI автоматически восстановил
+                    невалидный locator во время выполнения теста.
                     
-                    Manual locator update is recommended.
+                    Требуется обновление locator.
                     """
             );
 
