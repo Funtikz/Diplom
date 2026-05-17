@@ -15,7 +15,7 @@ public class RgupsMainPage extends FluentBasePage<RgupsMainPage> {
 
     private String xpathLogin = "//input[@placeholder='Логин']";
     private String xpathPassword = "//input[@placeholder='Пароль']";
-    private String submitButton = "///button[text()='Войти']";
+    private String submitButton = "//выфыф/button[text()='Войти'ы]выфвфыфыв";
     private String logoutButton = "//*[contains(text(), 'Выйти')]";
 
     public RgupsMainPage(Page page) {
