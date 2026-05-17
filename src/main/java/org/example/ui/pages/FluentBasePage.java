@@ -13,6 +13,7 @@ import io.qameta.allure.Allure;
 import io.qameta.allure.Param;
 import io.qameta.allure.Step;
 import io.qameta.allure.model.Status;
+import io.qameta.allure.model.StatusDetails;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.example.ui.AIHealingService;
@@ -317,6 +318,8 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         waitForLoadState();
         return self();
     }
+
+
     public T click(String xPath) {
 
         try {
@@ -329,7 +332,7 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
 
         } catch (Exception originalException) {
 
-            Allure.label("ai-healing", "used");
+            markTestAsAIHealed();
 
             Allure.parameter(
                     "Broken locator",
@@ -425,8 +428,7 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
                 );
 
                 Allure.step(
-                        "SELF-HEALING APPLIED",
-                        Status.BROKEN
+                        "🤖 AI successfully healed broken locator"
                 );
 
             } catch (Exception healedException) {
@@ -464,6 +466,42 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         waitForLoadState();
 
         return self();
+    }
+
+    private void markTestAsAIHealed() {
+
+        Allure.label("ai-healed", "true");
+
+        Allure.label("test-maintenance", "required");
+
+        Allure.getLifecycle().updateTestCase(testResult -> {
+
+            String currentName = testResult.getName();
+
+            if (!currentName.startsWith("🤖 ")) {
+
+                testResult.setName(
+                        "🤖 " + currentName
+                );
+            }
+
+            testResult.setDescription(
+                    """
+                    🤖 AI SELF-HEALING APPLIED
+                    
+                    Test continued successfully using AI-recovered locator.
+                    
+                    Manual locator update is recommended.
+                    """
+            );
+
+            testResult.setStatusDetails(
+                    new StatusDetails()
+                            .setMessage(
+                                    "AI locator healing was applied during test execution"
+                            )
+            );
+        });
     }
 
     public T goIfClickable(String xpath){
