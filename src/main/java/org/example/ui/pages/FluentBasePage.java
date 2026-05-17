@@ -83,8 +83,16 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         return text.get();
     }
 
+    @Step("Нажимаем клавишу Enter")
+    public T pressEnter() {
+        page.keyboard().press("Enter");
+        return self();
+    }
 
-
+    public FluentBasePage selectByValue(String selector, String value) {
+        page.locator(selector).selectOption(value);
+        return this;
+    }
 
     private void executeWithHealing(
             String originalXpath,

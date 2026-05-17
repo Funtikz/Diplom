@@ -18,9 +18,6 @@ public class RgupsSmokeTest extends BaseTest{
                 .open("https://portal.rgups.ru/index.php?r=site/login")
                 .auth();
     }
-
-
-
     @Test
     @DisplayName("1.Проверка авторизации и разлогина")
     @Description("Проверка авторизации пользователя в системе: вход в портал РГУПС и последующий выход из аккаунта")
@@ -30,12 +27,52 @@ public class RgupsSmokeTest extends BaseTest{
 
     @SneakyThrows
     @Test
+    @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
     void searchTextTest(){
-        RgupsMainPage page = auth().fill("//input[@id='menu-search-desk']", "Образование");
-        getAllureUtils().takeScreenshot("Проверили что поисковая строка верно работает");
+
+        RgupsMainPage page = auth()
+                .fill("//input[@id='menu-search-desk']", "Образование")
+                .pressEnter();
+
+        getAllureUtils().takeScreenshot("Проверили работу поисковой строки");
+
         page.click("//a[text()='Дополнительное профессиональное образование']");
-        Assertions.assertTrue(page.getUrl().equals("https://dev.meetings.rgups.ru/dpo-programs"));
-        getAllureUtils().takeScreenshot("Проверили что переход на страницу https://dev.meetings.rgups.ru/dpo-programs - успешно выполнен");
+
+        Assertions.assertEquals(
+                "https://dev.meetings.rgups.ru/dpo-programs",
+                page.getUrl()
+        );
+
+        getAllureUtils().takeScreenshot(
+                "Проверили успешный переход на страницу дополнительного профессионального образования"
+        );
+    }
+
+    @SneakyThrows
+    @Test
+    @Description("Проверка отображения данных портфолио: фильтрация по семестру и корректность значения 'Семестр/заезд'")
+    public void assertPortfolioSemesterValue() {
+
+        String actualText = auth()
+
+                .click("//a[text()='Портфолио']")
+                .waitForTimeout(500)
+
+                .click("(//*[text()='Работы обучающегося'])[2]")
+
+                .selectByValue("//select[@name='EduWorkStudentSearch[semester]']", "7")
+
+                .click("//button[@id='submit-button']")
+
+                .click("//i[@class='icon-pencil']")
+
+                .getText("//*[text()='Семестр/заезд']/parent::tr/td");
+
+        getAllureUtils().takeScreenshot("Открыта форма редактирования работы обучающегося");
+
+        getAllureUtils().takeScreenshot("Проверка значения поля 'Семестр/заезд'");
+
+        Assertions.assertEquals("7", actualText);
     }
 
 }
