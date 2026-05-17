@@ -27,6 +27,7 @@ public class RgupsSmokeTest extends BaseTest{
 
     @SneakyThrows
     @Test
+    @DisplayName("Поиск: проверка работы поисковой строки и перехода на страницу ДПО")
     @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
     void searchTextTest(){
 
@@ -50,6 +51,7 @@ public class RgupsSmokeTest extends BaseTest{
 
     @SneakyThrows
     @Test
+    @DisplayName("Портфолио: проверка фильтрации по семестру и значения поля 'Семестр/заезд'")
     @Description("Проверка отображения данных портфолио: фильтрация по семестру и корректность значения 'Семестр/заезд'")
     public void assertPortfolioSemesterValue() {
 
@@ -77,8 +79,10 @@ public class RgupsSmokeTest extends BaseTest{
     }
 
     @SneakyThrows
+    @DisplayName("Вакансии: проверка соответствия данных в списке и карточке вакансии")
     @Test
-    void checkVakansii() {
+    @Description("Проверяет, что название вакансии и зарплата в списке совпадают с данными в карточке вакансии")
+    void shouldMatchVacancyDataBetweenListAndCard() {
 
         RgupsMainPage rgupsPage = auth()
                 .click("//a[text()='Вакансии']");
@@ -104,10 +108,12 @@ public class RgupsSmokeTest extends BaseTest{
 
         getAllureUtils().takeScreenshot("Открыли карточку вакансии");
 
+        rgupsPage.click("//tr[th[normalize-space()='Зарплата']]/td");
         String currentSalary = rgupsPage.getText(
                 "//tr[th[normalize-space()='Зарплата']]/td"
         );
 
+        rgupsPage.click("(//h3)[1]");
         String currentName = rgupsPage.getText("(//h3)[1]");
 
         getAllureUtils().takeScreenshot("Сравниваем данные вакансии с карточкой");
@@ -117,4 +123,34 @@ public class RgupsSmokeTest extends BaseTest{
                 () -> Assertions.assertEquals(salary, currentSalary, "Зарплата вакансии не совпадает")
         );
     }
+
+
+    @SneakyThrows
+    @DisplayName("Онлайн расписание — проверка отображения данных за выбранную неделю")
+    @Description("Проверка, что в разделе 'Онлайн расписание' после выбора конкретной недели и применения фильтра отображаются данные в таблице расписания")
+    @Test
+    public void shouldDisplayScheduleForSelectedWeek() {
+
+        RgupsMainPage rgupsMainPage = new RgupsMainPage(getPage());
+        auth()
+                .scrollToElement("//a[text()='Онлайн расписание']")
+                .hover("//a[text()='Онлайн расписание']")
+                .click("//a[text() = 'Мое расписание']")
+                .selectByValue("//select[@id='week_timestamps']", "09.03.2026 - 15.03.2026")
+                .click("//button[text()='Подобрать']");
+
+         getAllureUtils().takeScreenshot("Открыли расписание и применили фильтр по неделе");
+
+        Assertions.assertTrue(
+                rgupsMainPage.isTableNotEmpty("table"),
+                "Таблица расписания пустая"
+        );
+
+        getAllureUtils().takeScreenshot("Таблица расписания содержит данные");
+    }
+
+
+
+
+
 }

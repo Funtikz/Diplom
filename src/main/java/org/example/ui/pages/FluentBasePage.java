@@ -94,6 +94,18 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         return this;
     }
 
+    @Step("Наводим курсор на элемент: {xpath}")
+    public T hover(String xpath) {
+
+        executeWithHealing(
+                xpath,
+                healedXpath ->
+                        page.locator(healedXpath).hover()
+        );
+
+        return self();
+    }
+
     private void executeWithHealing(
             String originalXpath,
             Consumer<String> action
@@ -224,6 +236,14 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
                 );
             }
         }
+    }
+
+    @Step("Проверяем, что таблица не пустая: {selector}")
+    public boolean isTableNotEmpty(String selector) {
+
+        Locator tableRows = page.locator(selector + " tbody tr");
+
+        return tableRows.count() > 0;
     }
 
     @Step("Происходит редирект на {endUrl}")
