@@ -65,7 +65,8 @@ public class RgupsSmokeTest extends BaseTest{
                 .click("//button[@id='submit-button']")
 
                 .click("//i[@class='icon-pencil']")
-
+                .click("//*[text()='Семестр/заезд']/parent::tr/td")
+                .waitForTimeout(300)
                 .getText("//*[text()='Семестр/заезд']/parent::tr/td");
 
         getAllureUtils().takeScreenshot("Открыта форма редактирования работы обучающегося");
