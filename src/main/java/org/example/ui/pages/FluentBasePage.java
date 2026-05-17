@@ -34,6 +34,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static io.qameta.allure.model.Parameter.Mode.HIDDEN;
@@ -64,12 +66,156 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         return locator.count();
     }
 
-    public String getText(String xpath){
-        return page.locator(xpath).innerText();
+    public String getText(String xpath) {
+
+        AtomicReference<String> text =
+                new AtomicReference<>();
+
+        executeWithHealing(
+                xpath,
+                healedXpath ->
+                        text.set(
+                                page.locator(healedXpath)
+                                        .innerText()
+                        )
+        );
+
+        return text.get();
     }
 
-    public String getText(Locator locator){
-        return locator.innerText();
+
+
+
+    private void executeWithHealing(
+            String originalXpath,
+            Consumer<String> action
+    ) {
+        try {
+
+            action.accept(originalXpath);
+
+        } catch (Exception originalException) {
+
+            markTestAsAIHealed();
+
+            Allure.parameter(
+                    "Сломанный locator",
+                    originalXpath
+            );
+
+            Allure.addAttachment(
+                    "Сломанный locator",
+                    """
+                    Locator требует обновления.
+                    
+                    Исходный locator:
+                    %s
+                    
+                    Ошибка:
+                    %s
+                    """.formatted(
+                            originalXpath,
+                            originalException.getMessage()
+                    )
+            );
+
+            String cleanDom =
+                    DomCleaner.clean(page.content());
+
+            AIHealingService healer =
+                    new OpenRouterHealingService();
+
+            String healedXpath;
+
+            try {
+
+                healedXpath =
+                        healer.healLocator(
+                                originalXpath,
+                                cleanDom
+                        );
+
+            } catch (Exception aiException) {
+
+                Allure.label(
+                        "ai-healing-status",
+                        "model-error"
+                );
+
+                Allure.addAttachment(
+                        "Ошибка AI healing",
+                        aiException.getMessage()
+                );
+
+                throw new RuntimeException(
+                        "AI healing failed",
+                        aiException
+                );
+            }
+
+            Allure.parameter(
+                    "Восстановленный locator",
+                    healedXpath
+            );
+
+            Allure.addAttachment(
+                    "Восстановленный locator",
+                    """
+                    Исходный locator:
+                    %s
+                    
+                    AI восстановил locator:
+                    %s
+                    """.formatted(
+                            originalXpath,
+                            healedXpath
+                    )
+            );
+
+            try {
+
+                action.accept(healedXpath);
+
+                Allure.label(
+                        "ai-healing-status",
+                        "success"
+                );
+
+                Allure.step(
+                        "🤖 AI успешно восстановил locator"
+                );
+
+            } catch (Exception healedException) {
+
+                Allure.label(
+                        "ai-healing-status",
+                        "failed"
+                );
+
+                Allure.addAttachment(
+                        "Ошибка восстановленного locator",
+                        """
+                        Исходный locator:
+                        %s
+                        
+                        Восстановленный locator:
+                        %s
+                        
+                        Ошибка:
+                        %s
+                        """.formatted(
+                                originalXpath,
+                                healedXpath,
+                                healedException.getMessage()
+                        )
+                );
+
+                throw new RuntimeException(
+                        "Healed locator also failed",
+                        healedException
+                );
+            }
+        }
     }
 
     @Step("Происходит редирект на {endUrl}")
@@ -124,19 +270,18 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
      */
     @Step("Скроллим к элементу: {xpath}")
     public T scrollToElement(String xpath) {
-        Locator element = page.locator(xpath);
-        element.scrollIntoViewIfNeeded();
+
+        executeWithHealing(
+                xpath,
+                healedXpath ->
+                        page.locator(healedXpath)
+                                .scrollIntoViewIfNeeded()
+        );
+
         return self();
     }
 
-    /**
-     * Скролл к элементу (если он не виден)
-     */
-    @Step("Скроллим к элементу: {xpath}")
-    public T scrollToElement(Locator element) {
-        element.scrollIntoViewIfNeeded();
-        return self();
-    }
+
 
     @SneakyThrows
     @Step("Переключаемся в шапке на {organization}")
@@ -320,148 +465,21 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
     }
 
 
-    public T click(String xPath) {
+    public T click(String xpath) {
 
-        try {
+        executeWithHealing(
+                xpath,
+                healedXpath -> {
 
-            waitForLocatorVisible(
-                    page.locator(xPath).first()
-            );
+                    waitForLocatorVisible(
+                            page.locator(healedXpath).first()
+                    );
 
-            highlightElements.clickWithHighlight(xPath);
-
-        } catch (Exception originalException) {
-
-            markTestAsAIHealed();
-
-            Allure.parameter(
-                    "Broken locator",
-                    xPath
-            );
-
-            Allure.addAttachment(
-                    "Broken locator",
-                    """
-                    Locator requires manual update
-                    
-                    Original locator:
-                    %s
-                    
-                    Error:
-                    %s
-                    """.formatted(
-                            xPath,
-                            originalException.getMessage()
-                    )
-            );
-
-            String cleanDom =
-                    DomCleaner.clean(page.content());
-
-            AIHealingService healer =
-                    new OpenRouterHealingService();
-
-            String healedXpath;
-
-            try {
-
-                healedXpath =
-                        healer.healLocator(
-                                xPath,
-                                cleanDom
-                        );
-
-            } catch (Exception aiException) {
-
-                Allure.label(
-                        "ai-healing-status",
-                        "model-error"
-                );
-
-                Allure.addAttachment(
-                        "AI healing failed",
-                        aiException.getMessage()
-                );
-
-                throw new RuntimeException(
-                        "AI healing failed",
-                        aiException
-                );
-            }
-
-            Allure.parameter(
-                    "Healed locator",
-                    healedXpath
-            );
-
-            Allure.addAttachment(
-                    "Healed locator",
-                    """
-                    Original locator:
-                    %s
-                    
-                    Healed locator:
-                    %s
-                    """.formatted(
-                            xPath,
+                    highlightElements.clickWithHighlight(
                             healedXpath
-                    )
-            );
-
-            try {
-
-                waitForLocatorVisible(
-                        page.locator(healedXpath).first()
-                );
-
-                highlightElements
-                        .clickWithHighlight(healedXpath);
-
-                Allure.label(
-                        "test-maintenance",
-                        "required"
-                );
-
-                Allure.label(
-                        "ai-healing-status",
-                        "success"
-                );
-
-                Allure.step(
-                        "🤖 AI successfully healed broken locator"
-                );
-
-            } catch (Exception healedException) {
-
-                Allure.label(
-                        "ai-healing-status",
-                        "failed"
-                );
-
-                Allure.addAttachment(
-                        "Healed locator failed",
-                        """
-                        Original locator:
-                        %s
-                        
-                        Healed locator:
-                        %s
-                        
-                        Error:
-                        %s
-                        """.formatted(
-                                xPath,
-                                healedXpath,
-                                healedException.getMessage()
-                        )
-                );
-
-                throw new RuntimeException(
-                        "Healed locator also failed",
-                        healedException
-                );
-            }
-        }
+                    );
+                }
+        );
 
         waitForLoadState();
 
@@ -518,13 +536,14 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
         return self();
     }
 
-    public T fill(Locator locator, String value) {
-        locator.fill(value);
-        return self();
-    }
-
     public T fill(String xpath, String value) {
-        page.locator(xpath).fill(value);
+
+        executeWithHealing(
+                xpath,
+                healedXpath ->
+                        page.locator(healedXpath).fill(value)
+        );
+
         return self();
     }
 
