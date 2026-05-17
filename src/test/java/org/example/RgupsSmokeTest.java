@@ -8,6 +8,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
+import static org.example.ui.Constants.Capability.*;
+
 @Execution(ExecutionMode.CONCURRENT)
 public class RgupsSmokeTest extends BaseTest{
 
@@ -29,7 +31,11 @@ public class RgupsSmokeTest extends BaseTest{
                 System.getenv("OPENROUTER_API_KEY");
         new RgupsMainPage(getPage())
                 .open("https://portal.rgups.ru/index.php?r=site/login");
-        Allure.step(apiKey);
+        Allure.step(OPEN_ROUTER_KEY);
+        Allure.step(USER_1_LOGIN);
+        Allure.step(USER_1_PASS);
+
+
     }
 
 }

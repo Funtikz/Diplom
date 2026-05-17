@@ -18,10 +18,22 @@ node {
     ]) {
 
         withCredentials([
+
                 string(
                         credentialsId: 'OpenRouter',
                         variable: 'OPENROUTER_API_KEY'
+                ),
+
+                string(
+                        credentialsId: 'user-login-1',
+                        variable: 'USER_LOGIN_1'
+                ),
+
+                string(
+                        credentialsId: 'user-pass-1',
+                        variable: 'USER_PASS_1'
                 )
+
         ]) {
 
             stage("Checkout") {
@@ -48,6 +60,7 @@ node {
             } finally {
 
                 stage("Allure") {
+
                     allure([
                             includeProperties: true,
                             reportBuildPolicy: 'ALWAYS',

@@ -109,8 +109,9 @@ java {
 ext.commonSystemProperties = [
         'env': System.getenv('ENV') ?: 'stage',
         'browser': System.getenv('BROWSER') ?: 'CHROMIUM',
-        'login.1': System.getenv('USER_LOGIN_1') ?: '216846',
-        'pass.1': System.getenv('USER_PASS_1') ?: 'N3200558819',
+        'login.1': System.getenv('USER_LOGIN_1') ?: '',
+        'pass.1': System.getenv('USER_PASS_1') ?: '',
+        'open.router.key' : System.getenv("OPENROUTER_API_KEY") ?: '',
         'isVideoRecord': System.getenv('IS_VIDEO_RECORD') ?: 'true',
 ]
 
