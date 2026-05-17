@@ -499,7 +499,7 @@ public abstract class FluentBasePage<T extends FluentBasePage<T>> {
             testResult.setStatusDetails(
                     new StatusDetails()
                             .setMessage(
-                                    "AI locator healing was applied during test execution"
+                                    "Во время выполнения теста был применен AI self-healing locator"
                             )
             );
         });
