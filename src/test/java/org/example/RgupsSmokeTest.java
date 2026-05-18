@@ -1,6 +1,5 @@
 package org.example;
 
-import io.qameta.allure.Allure;
 import io.qameta.allure.Description;
 import lombok.SneakyThrows;
 import org.example.ui.pages.RgupsMainPage;
@@ -30,9 +29,9 @@ public class RgupsSmokeTest extends BaseTest{
     @DisplayName("Поиск: проверка работы поисковой строки и перехода на страницу ДПО")
     @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
     void searchTextTest(){
-
+        ////input[@id='menu-search-desk']
         RgupsMainPage page = auth()
-                .fill("//input[@id='menu-search-desk']", "Образование")
+                .fill("//input[@id=dsadsa]", "Образование")
                 .pressEnter();
 
         getAllureUtils().takeScreenshot("Проверили работу поисковой строки");
