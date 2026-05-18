@@ -31,7 +31,7 @@ public class RgupsSmokeTest extends BaseTest{
     void searchTextTest(){
         ////input[@id='menu-search-desk']
         RgupsMainPage page = auth()
-                .fill("//input[@id=dsadsa]", "Образование")
+                .fill("//", "Образование")
                 .pressEnter();
 
         getAllureUtils().takeScreenshot("Проверили работу поисковой строки");
