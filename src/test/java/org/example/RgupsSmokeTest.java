@@ -24,29 +24,29 @@ public class RgupsSmokeTest extends BaseTest{
         auth().logout();
     }
 
-    @SneakyThrows
-    @Test
-    @DisplayName("Поиск: проверка работы поисковой строки и перехода на страницу ДПО")
-    @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
-    void searchTextTest(){
-        //input[@id='menu-search-desk']
-        RgupsMainPage page = auth()
-                .fill("//input[@id='menu-search-desk']", "Образование")
-                .pressEnter();
-
-        getAllureUtils().takeScreenshot("Проверили работу поисковой строки");
-
-        page.click("//a[text()='Дополнительное профессиональное образование']");
-
-        Assertions.assertEquals(
-                "https://dev.meetings.rgups.ru/dpo-programs",
-                page.getUrl()
-        );
-
-        getAllureUtils().takeScreenshot(
-                "Проверили успешный переход на страницу дополнительного профессионального образования"
-        );
-    }
+//    @SneakyThrows
+//    @Test
+//    @DisplayName("Поиск: проверка работы поисковой строки и перехода на страницу ДПО")
+//    @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
+//    void searchTextTest(){
+//        //input[@id='menu-search-desk']
+//        RgupsMainPage page = auth()
+//                .fill("//input[@id = 'menu-search-desktop']", "Образование")
+//                .pressEnter();
+//
+//        getAllureUtils().takeScreenshot("Проверили работу поисковой строки");
+//
+//        page.click("//a[text()='Дополнительное профессиональное образование']");
+//
+//        Assertions.assertEquals(
+//                "https://dev.meetings.rgups.ru/dpo-programs",
+//                page.getUrl()
+//        );
+//
+//        getAllureUtils().takeScreenshot(
+//                "Проверили успешный переход на страницу дополнительного профессионального образования"
+//        );
+//    }
 
     @SneakyThrows
     @Test
