@@ -29,9 +29,9 @@ public class RgupsSmokeTest extends BaseTest{
     @DisplayName("Поиск: проверка работы поисковой строки и перехода на страницу ДПО")
     @Description("Проверка работы поисковой строки и перехода на страницу дополнительного профессионального образования")
     void searchTextTest(){
-        ////input[@id='menu-search-desk']
+        //input[@id='menu-search-desk']
         RgupsMainPage page = auth()
-                .fill("//", "Образование")
+                .fill("//input[@id='menu-search-desk']", "Образование")
                 .pressEnter();
 
         getAllureUtils().takeScreenshot("Проверили работу поисковой строки");

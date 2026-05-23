@@ -68,7 +68,7 @@ node {
                     ])
                 }
 
-                stage("Telegram Report") {
+                stage("Messenger Report") {
                     sendTelegramReport(
                             TELEGRAM_CHAT_ID,
                             branch_cutted
